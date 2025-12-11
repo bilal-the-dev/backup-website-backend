@@ -22,7 +22,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options("*", cors());
+app.options("/*cors", cors());
 
 // returns a function acting as middleware to parse application/json bodies
 app.use(express.json());
