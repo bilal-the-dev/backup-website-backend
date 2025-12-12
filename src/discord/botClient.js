@@ -1,4 +1,4 @@
-import { Client, GatewayDispatchEvents, GatewayIntentBits } from "discord.js";
+import { Client, GatewayIntentBits } from "discord.js";
 
 const botClient = new Client({
   intents: [GatewayIntentBits.Guilds],
