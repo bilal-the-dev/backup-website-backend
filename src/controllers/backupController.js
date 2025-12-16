@@ -7,7 +7,7 @@ import { sendResponse } from "../utils/sendResponse.js";
 export const sendBackup = async (req, res) => {
   const backupId = req.params.backupId;
 
-  const backupData = getBackupByPath(backupId);
+  const backupData = await getBackupByPath(backupId);
 
   if (!backupData) throw new AppError("Backup file not found", 404);
 
