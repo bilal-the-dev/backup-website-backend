@@ -1,6 +1,7 @@
 import ProcessController from "../structures/ProcessController.js";
 import AppError from "../utils/appError.js";
 import { processStatus } from "../utils/constants.js";
+import { sendResponse } from "../utils/sendResponse.js";
 
 export const getProcesses = (req, res) => {
   const processes = ProcessController.getAllProcesses();
