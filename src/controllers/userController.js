@@ -1,3 +1,4 @@
+import ProcessController from "../structures/ProcessController.js";
 import { sendResponse } from "../utils/sendResponse.js";
 
 export const getMe = (req, res) => {
@@ -10,6 +11,7 @@ export const getMe = (req, res) => {
     bot: user.bot,
     avatarURL: user.avatarURL(),
     defaultAvatarURL: user.defaultAvatarURL,
+    processes: ProcessController.getAllProcesses().length,
   };
 
   sendResponse(req, res, data);
