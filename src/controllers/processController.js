@@ -17,7 +17,7 @@ export const removeProcess = (req, res) => {
     process.status !== processStatus.Completed ||
     process.status !== processStatus.Errored
   )
-    throw new Error("Process not completed yet", 400);
+    throw new AppError("Process not completed yet", 400);
 
   ProcessController.deleteProcess(req.params.processId);
 
