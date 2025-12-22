@@ -98,9 +98,6 @@ export const backupFriends = async (req, res) => {
 
   const friends = [...client.relationships.friendCache.values()];
 
-  console.log(friends);
-  console.log(friends[0]);
-
   const friendsBackup = [];
 
   friends.forEach((friend) => {
