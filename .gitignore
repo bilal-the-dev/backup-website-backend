@@ -5,4 +5,6 @@ backups/*
 !backups/.gitkeep
 attachments/*
 !attachments/.gitkeep
+avatars/*
+!avatars/.gitkeep
 database.db

@@ -3,8 +3,8 @@ import { isDmOrGroup, isGuild } from "./checkers.js";
 import { processStatus } from "./constants.js";
 import { generateUniqueId } from "./crypto.js";
 import {
+  downloadAndSaveFile,
   ensureAttachmentsDirectoryExists,
-  saveAttachment,
   saveBackup,
 } from "./file.js";
 
@@ -187,22 +187,14 @@ async function backupChannel(channel) {
         };
 
         for (const attachment of message.attachments.values()) {
-          const fileExtension = attachment.name.split(".").pop(); // Extract file extension
-
-          const response = await fetch(attachment.url);
-
-          const arrayBuff = await response.arrayBuffer();
-
-          const buffer = Buffer.from(arrayBuff);
-
           ensureAttachmentsDirectoryExists(channel.id);
 
-          await saveAttachment(
-            channel.id,
-            attachment.id,
-            fileExtension,
-            buffer
-          );
+          await downloadAndSaveFile({
+            fileURL: attachment.url,
+            itemId: channel.id,
+            isAttachment: true,
+            id: attachment.id,
+          });
 
           messageBackup.attachments.push({
             id: attachment.id,
