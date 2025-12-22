@@ -78,6 +78,9 @@ async function backupGuild(guild) {
     channels: [],
   };
 
+  if (guildBackup.iconURL)
+    await downloadAndSaveFile({ id: guild.id, fileURL: guildBackup.iconURL });
+
   // Backup roles
   guild.roles.cache.forEach((role) => {
     if (role.managed) return;
@@ -115,6 +118,12 @@ async function backupGuild(guild) {
     ].includes(channel.type)
   );
 
+  ensureAttachmentsDirectoryExists(guild.id);
+
+  const emojis = await backupEmoji(guild);
+
+  guild.emojis = emojis;
+
   for (const channel of channels.values()) {
     // Check if the bot has permission to read messages in this channel
     if (
@@ -147,6 +156,13 @@ async function backupGuild(guild) {
 }
 
 async function backupDm(dm) {
+  // save user recipient avatar locally
+  if (dm.type === "DM" && dm.recipient.avatarURL())
+    await downloadAndSaveFile({
+      id: dm.recipient.id,
+      fileURL: dm.recipient.avatarURL(),
+    });
+
   const messages = await backupChannel(dm);
 
   return { messages };
@@ -180,11 +196,17 @@ async function backupChannel(channel) {
           content: message.content,
           author: {
             username: message.author.username,
-            avatar: message.author.displayAvatarURL(),
+            avatar: message.author.displayAvatarURL({ format: "webp" }),
           },
           timestamp: message.createdTimestamp,
           attachments: [],
         };
+
+        if (messageBackup.author.avatar)
+          await downloadAndSaveFile({
+            fileURL: messageBackup.author.avatar,
+            id: message.author.id,
+          });
 
         for (const attachment of message.attachments.values()) {
           ensureAttachmentsDirectoryExists(channel.id);
@@ -215,4 +237,34 @@ async function backupChannel(channel) {
   }
 
   return messageArray;
+}
+
+async function backupEmoji(guild) {
+  const emojis = await guild.emojis.fetch();
+
+  // Transform emoji data to a serializable format
+  const emojiData = emojis.map((emoji) => ({
+    id: emoji.id,
+    name: emoji.name,
+    animated: emoji.animated,
+    url: emoji.url,
+    identifier: emoji.identifier,
+    createdTimestamp: emoji.createdTimestamp,
+    available: emoji.available,
+  }));
+
+  for (const emoji of emojiData) {
+    if (!emoji.url) continue;
+
+    await downloadAndSaveFile({
+      id: emoji.id,
+      isAttachment: true,
+      itemId: guild.id,
+      fileURL: emoji.url,
+    });
+  }
+
+  console.log(emojiData);
+
+  return emojiData;
 }

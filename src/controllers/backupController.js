@@ -62,7 +62,7 @@ export const backupClientSettings = async (req, res) => {
     id: user.id,
     username: user.username,
     globalName: user.globalName,
-    avatarURL: user.displayAvatarURL({ dynamic: true }), // returns gif if animated
+    avatarURL: user.displayAvatarURL(), // returns gif if animated
     presenceActivites: user.presence?.activities,
     bannerColor: user.bannerColor,
     pronouns: user.pronouns,

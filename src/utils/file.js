@@ -40,6 +40,8 @@ export const downloadAndSaveFile = async ({
 }) => {
   const response = await fetch(fileURL);
 
+  // console.log(response);
+
   const arrayBuff = await response.arrayBuffer();
 
   const buffer = Buffer.from(arrayBuff);
