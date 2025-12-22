@@ -2,6 +2,7 @@ import { DataResolver, Util } from "discord.js-selfbot-v13";
 import ClientHandler from "../structures/ClientHandler.js";
 import { getAvatar, getBackupByPath } from "../utils/file.js";
 import { sendResponse } from "../utils/sendResponse.js";
+import AppError from "../utils/appError.js";
 
 export const restoreClientSettings = async (req, res) => {
   const settings = await getBackupByPath("clientSettings");
