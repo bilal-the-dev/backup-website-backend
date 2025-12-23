@@ -118,6 +118,7 @@ async function clearServer(guild) {
   // Delete all roles (except @everyone)
   for (const role of guild.roles.cache.values()) {
     if (role.name === "@everyone") continue;
+    if (role.managed) continue;
     try {
       await role.delete();
     } catch (error) {
