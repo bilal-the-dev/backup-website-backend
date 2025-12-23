@@ -1,18 +1,19 @@
 import ClientHandler from "../structures/ClientHandler.js";
 import AppError from "../utils/appError.js";
-import { startBackup } from "../utils/backup.js";
-import { isDmOrGroup, isGuild, throwErrIfBot } from "../utils/checkers.js";
+import { verifyAndGetItemDetails } from "../utils/checkers.js";
+import { processType } from "../utils/constants.js";
 import {
   downloadAndSaveFile,
   getBackupByPath,
   saveBackup,
 } from "../utils/file.js";
+import { startProcess } from "../utils/process.js";
 import { sendResponse } from "../utils/sendResponse.js";
 
 export const sendBackup = async (req, res) => {
   const backupId = req.params.backupId;
 
-  const backupData = await getBackupByPath(backupId);
+  const backupData = getBackupByPath(backupId);
 
   if (!backupData) throw new AppError("Backup file not found", 404);
 
@@ -20,35 +21,9 @@ export const sendBackup = async (req, res) => {
 };
 
 export const backupItem = async (req, res) => {
-  const {
-    params: { itemId },
-    body: { itemType: requestItemType, itemName },
-  } = req;
+  const item = verifyAndGetItemDetails(req, processType.BACKUP);
 
-  if (!itemName)
-    throw new AppError(
-      "Please supply itemName (group, dm, server name) in body",
-      400
-    );
-
-  if (isGuild(requestItemType)) {
-    const guild = ClientHandler.getClient(req).guilds.cache.get(itemId);
-
-    if (!guild) throw new AppError(`${requestItemType} not found`, 404);
-
-    startBackup(req, guild); // no await so it processed in background
-  }
-
-  if (isDmOrGroup(requestItemType)) {
-    throwErrIfBot(req);
-
-    const dm = ClientHandler.getClient(req).channels.cache.get(itemId);
-
-    if (!dm || !(dm.type === "DM" || dm.type === "GROUP_DM"))
-      throw new AppError(`${requestItemType} not found`, 404);
-
-    startBackup(req, dm); // no await so it processed in background
-  }
+  startProcess(req, processType.BACKUP, item);
 
   sendResponse(req, res, undefined);
 };
@@ -117,7 +92,7 @@ export const backupFriends = async (req, res) => {
 };
 
 export const sendSavedClientSettings = async (req, res) => {
-  const settings = await getBackupByPath("clientSettings");
+  const settings = getBackupByPath("clientSettings");
 
   if (!settings)
     throw new AppError("No setting backup found, backup first", 400);

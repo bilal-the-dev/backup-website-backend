@@ -30,6 +30,7 @@ export const saveBackup = async (backupId, backupData) => {
   console.log(`Backup saved to ${backupFilePath}`);
 };
 
+// atachemnts has emoji pics in guild fold, channel messages attachment in channel folder
 // avatar like includes guild icon, user avatar/banner
 export const downloadAndSaveFile = async ({
   id, // attachment id or avatar user id or server id
@@ -57,17 +58,25 @@ export const downloadAndSaveFile = async ({
   return fileExtension;
 };
 
-export const getBackupByPath = async (backupId) => {
+export const getBackupByPath = (backupId) => {
   const backupFilePath = path.join(backupPath, `backup-${backupId}.json`);
 
   if (!fsSync.existsSync(backupFilePath)) return;
 
-  return await fs.readFile(backupFilePath, "utf-8");
+  return fsSync.readFileSync(backupFilePath, "utf-8");
 };
 
 // User id or server id
-export const getAvatar = (id, ext) => {
+export const getAvatar = (id, ext = "webp") => {
   const filePath = path.join(avatarPath, `${id}.${ext}`);
+
+  if (!fsSync.existsSync(filePath)) return;
+
+  return fsSync.readFileSync(filePath);
+};
+
+export const getAttachment = (itemId, attachId, ext) => {
+  const filePath = path.join(getAttachmentPath(itemId), `${attachId}.${ext}`);
 
   if (!fsSync.existsSync(filePath)) return;
 

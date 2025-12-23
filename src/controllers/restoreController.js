@@ -3,9 +3,20 @@ import ClientHandler from "../structures/ClientHandler.js";
 import { getAvatar, getBackupByPath } from "../utils/file.js";
 import { sendResponse } from "../utils/sendResponse.js";
 import AppError from "../utils/appError.js";
+import { startProcess } from "../utils/process.js";
+import { processType } from "../utils/constants.js";
+import { verifyAndGetItemDetails } from "../utils/checkers.js";
+
+export const restoreItem = async (req, res) => {
+  const backupData = verifyAndGetItemDetails(req, processType.RESTORE);
+
+  startProcess(req, processType.RESTORE, backupData);
+
+  sendResponse(req, res, undefined);
+};
 
 export const restoreClientSettings = async (req, res) => {
-  const settings = await getBackupByPath("clientSettings");
+  const settings = getBackupByPath("clientSettings");
 
   if (!settings)
     throw new AppError("No setting backup found, backup first", 400);

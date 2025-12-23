@@ -1,69 +1,10 @@
-import ProcessController from "../structures/ProcessController.js";
-import { isDmOrGroup, isGuild } from "./checkers.js";
-import { processStatus } from "./constants.js";
-import { generateUniqueId } from "./crypto.js";
 import {
   downloadAndSaveFile,
   ensureAttachmentsDirectoryExists,
-  saveBackup,
 } from "./file.js";
 
-export const startBackup = async (req, item) => {
-  const processId = generateUniqueId();
-  try {
-    const { itemName, itemType, iconURL } = req.body;
-    const { tokenType } = req.query;
-
-    const backupId = `${itemType}-${item.id}`;
-
-    const processData = {
-      processId,
-      backupId,
-      status: processStatus.Active,
-      tokenType,
-      itemName,
-      itemType,
-      iconURL,
-    };
-
-    ProcessController.setProcess(processId, processData);
-
-    let remainingProps = {};
-
-    if (isGuild(itemType)) remainingProps = await backupGuild(item);
-
-    if (isDmOrGroup(itemType)) remainingProps = await backupDm(item);
-
-    const backupData = {
-      id: item.id,
-      type: item.type || "guild", // since guild dont have type
-      name: itemName,
-      ...remainingProps,
-    };
-
-    await saveBackup(backupId, backupData);
-
-    ProcessController.setProcess(processId, {
-      ...processData,
-      status: processStatus.Completed,
-    });
-  } catch (error) {
-    console.error(error);
-
-    const process = ProcessController.getProcess(processId);
-
-    if (!process) return;
-
-    ProcessController.setProcess(processId, {
-      ...process,
-      status: processStatus.Errored,
-      errorMsg: error.message,
-    });
-  }
-};
-
-async function backupGuild(guild) {
-  let guildBackup = {
+export const backupGuild = async (guild) => {
+  const guildBackup = {
     iconURL: guild.iconURL(),
     memberCount: guild.memberCount,
     verificationLevel: guild.verificationLevel,
@@ -76,6 +17,7 @@ async function backupGuild(guild) {
     roles: [],
     categories: [],
     channels: [],
+    threads: [],
   };
 
   if (guildBackup.iconURL)
@@ -108,14 +50,9 @@ async function backupGuild(guild) {
 
   // Backup channels
   const channels = guild.channels.cache.filter((channel) =>
-    [
-      "GUILD_TEXT",
-      "GUILD_NEWS",
-      "GUILD_FORUM",
-      "GUILD_PUBLIC_THREAD",
-      "GUILD_PRIVATE_THREAD",
-      "GUILD_VOICE",
-    ].includes(channel.type)
+    ["GUILD_TEXT", "GUILD_NEWS", "GUILD_FORUM", "GUILD_VOICE"].includes(
+      channel.type
+    )
   );
 
   ensureAttachmentsDirectoryExists(guild.id);
@@ -147,26 +84,66 @@ async function backupGuild(guild) {
       parentId: channel.parentId,
     };
 
+    if (channelBackup.type === "GUILD_PUBLIC_THREAD")
+      channelBackup.type = "PUBLIC_THREAD";
+
+    if (channelBackup.type === "GUILD_PRIVATE_THREAD")
+      channelBackup.type = "PRIVATE_THREAD";
+
     guildBackup.channels.push(channelBackup);
+  }
+
+  const threads = guild.channels.cache.filter((channel) =>
+    ["GUILD_PUBLIC_THREAD", , "GUILD_PRIVATE_THREAD"].includes(channel.type)
+  );
+  for (const thread of threads.values()) {
+    // Backup messages and attachments
+    const messages = await backupChannel(thread);
+
+    const threadBackup = {
+      id: thread.id,
+      name: thread.name,
+      type: thread.type,
+      messages,
+      parentId: thread.parentId,
+    };
+
+    if (threadBackup.type === "GUILD_PUBLIC_THREAD")
+      threadBackup.type = "PUBLIC_THREAD";
+
+    if (threadBackup.type === "GUILD_PRIVATE_THREAD")
+      threadBackup.type = "PRIVATE_THREAD";
+
+    guildBackup.threads.push(threadBackup);
   }
 
   await guild.fetch(); // this will throw err if token was revoked or something, causing backup to go errored status and not save
 
   return guildBackup;
-}
+};
 
-async function backupDm(dm) {
+export const backupDm = async (dm) => {
   // save user recipient avatar locally
-  if (dm.type === "DM" && dm.recipient.avatarURL())
+  if (dm.type === "DM" && dm.recipient.avatar)
     await downloadAndSaveFile({
       id: dm.recipient.id,
       fileURL: dm.recipient.avatarURL(),
     });
 
+  if (dm.type === "GROUP_DM") {
+    for (const recipient of [...dm.recipients.values()]) {
+      if (!recipient.avatar) continue;
+      await downloadAndSaveFile({
+        id: recipient.id,
+        fileURL: recipient.avatarURL(),
+      });
+    }
+  }
+
   const messages = await backupChannel(dm);
 
   return { messages };
-}
+};
 
 async function backupChannel(channel) {
   const messageArray = [];
@@ -195,6 +172,7 @@ async function backupChannel(channel) {
         const messageBackup = {
           content: message.content,
           author: {
+            id: message.author.id,
             username: message.author.username,
             avatar: message.author.displayAvatarURL({ format: "webp" }),
           },
@@ -256,15 +234,15 @@ async function backupEmoji(guild) {
   for (const emoji of emojiData) {
     if (!emoji.url) continue;
 
-    await downloadAndSaveFile({
+    const extension = await downloadAndSaveFile({
       id: emoji.id,
       isAttachment: true,
       itemId: guild.id,
       fileURL: emoji.url,
     });
-  }
 
-  console.log(emojiData);
+    emoji.extension = extension;
+  }
 
   return emojiData;
 }

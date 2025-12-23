@@ -1,7 +1,14 @@
 import { getConfigDb } from "../database/queries.js";
 import ClientHandler from "../structures/ClientHandler.js";
 import AppError from "../utils/appError.js";
-import { botType, botTypeArray, itemType, itemTypeArray } from "./constants.js";
+import {
+  botType,
+  botTypeArray,
+  itemType,
+  itemTypeArray,
+  processType,
+} from "./constants.js";
+import { getBackupByPath } from "./file.js";
 
 export const checkLogin = async (req, res, next) => {
   isCorrectBotType(req);
@@ -59,3 +66,53 @@ export const isDmOrGroup = (type) =>
   type === itemType.DM || type === itemType.GROUP_DM;
 
 export const isGuild = (type) => type === itemType.GUILD;
+
+// for backup, gets the server, dm , group, for restore gets the backup file
+export const verifyAndGetItemDetails = (req, type) => {
+  const {
+    params: { itemId },
+    body: { itemType: typeOfItem, itemName },
+  } = req;
+
+  const data = { req, itemId, typeOfItem, typeOfProcess: type };
+
+  if (!itemName)
+    throw new AppError(
+      "Please supply itemName (group, dm, server name) in body",
+      400
+    );
+
+  if (data.typeOfProcess === processType.BACKUP)
+    return verifyBackupProcess(data);
+
+  if (data.typeOfProcess === processType.RESTORE)
+    return verifyRestoreProcess(data);
+};
+
+const verifyBackupProcess = ({ req, itemId, typeOfItem }) => {
+  let item;
+  if (isGuild(typeOfItem)) {
+    item = ClientHandler.getClient(req).guilds.cache.get(itemId);
+
+    if (!item) throw new AppError(`${typeOfItem} not found`, 404);
+  }
+
+  if (isDmOrGroup(typeOfItem)) {
+    throwErrIfBot(req);
+
+    item = ClientHandler.getClient(req).channels.cache.get(itemId);
+
+    if (!item || !(item.type === "DM" || item.type === "GROUP_DM"))
+      throw new AppError(`${typeOfItem} not found`, 404);
+  }
+
+  return item;
+};
+
+const verifyRestoreProcess = ({ itemId, typeOfItem }) => {
+  const backupData = getBackupByPath(`${typeOfItem}-${itemId}`);
+
+  if (!backupData) throw new AppError("Backup file not found", 404);
+
+  return JSON.parse(backupData);
+};
