@@ -1,9 +1,30 @@
+import ProcessController from "../structures/ProcessController.js";
 import {
   downloadAndSaveFile,
   ensureAttachmentsDirectoryExists,
 } from "./file.js";
 
-export const backupGuild = async (guild) => {
+export const backupGuild = async (guild, processId) => {
+  // Backup channels
+  const channels = guild.channels.cache.filter((channel) =>
+    ["GUILD_TEXT", "GUILD_NEWS", "GUILD_FORUM", "GUILD_VOICE"].includes(
+      channel.type
+    )
+  );
+
+  const threads = guild.channels.cache.filter((channel) =>
+    ["GUILD_PUBLIC_THREAD", , "GUILD_PRIVATE_THREAD"].includes(channel.type)
+  );
+
+  const totalChannels = channels.size + threads.size;
+
+  const process = ProcessController.getProcess(processId);
+
+  ProcessController.setProcess(processId, {
+    ...process,
+    totalChannels,
+  });
+
   const guildBackup = {
     iconURL: guild.iconURL(),
     memberCount: guild.memberCount,
@@ -49,13 +70,6 @@ export const backupGuild = async (guild) => {
       });
     });
 
-  // Backup channels
-  const channels = guild.channels.cache.filter((channel) =>
-    ["GUILD_TEXT", "GUILD_NEWS", "GUILD_FORUM", "GUILD_VOICE"].includes(
-      channel.type
-    )
-  );
-
   ensureAttachmentsDirectoryExists(guild.id);
 
   const emojis = await backupEmoji(guild);
@@ -92,11 +106,15 @@ export const backupGuild = async (guild) => {
       channelBackup.type = "PRIVATE_THREAD";
 
     guildBackup.channels.push(channelBackup);
+
+    const process = ProcessController.getProcess(processId);
+
+    ProcessController.setProcess(processId, {
+      ...process,
+      processedChannels: process.processedChannels + 1,
+    });
   }
 
-  const threads = guild.channels.cache.filter((channel) =>
-    ["GUILD_PUBLIC_THREAD", , "GUILD_PRIVATE_THREAD"].includes(channel.type)
-  );
   for (const thread of threads.values()) {
     // Backup messages and attachments
     const messages = await backupChannel(thread);
@@ -116,6 +134,13 @@ export const backupGuild = async (guild) => {
       threadBackup.type = "PRIVATE_THREAD";
 
     guildBackup.threads.push(threadBackup);
+
+    const process = ProcessController.getProcess(processId);
+
+    ProcessController.setProcess(processId, {
+      ...process,
+      processedChannels: process.processedChannels + 1,
+    });
   }
 
   await guild.fetch(); // this will throw err if token was revoked or something, causing backup to go errored status and not save

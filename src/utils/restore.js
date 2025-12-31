@@ -1,7 +1,16 @@
 import ClientHandler from "../structures/ClientHandler.js";
 import { getAttachment, getAvatar } from "./file.js";
 
-export const restoreGuild = async (req, backupData, guildId) => {
+export const restoreGuild = async (req, backupData, guildId, processId) => {
+  const totalChannels = backupData.channels.length + backupData.threads.length;
+
+  const process = ProcessController.getProcess(processId);
+
+  ProcessController.setProcess(processId, {
+    ...process,
+    totalChannels,
+  });
+
   const client = ClientHandler.getClient(req);
   const guild = client.guilds.cache.get(guildId);
 
@@ -72,6 +81,11 @@ export const restoreGuild = async (req, backupData, guildId) => {
     } catch (error) {
       console.error(error);
     }
+
+    ProcessController.setProcess(processId, {
+      ...process,
+      processedChannels: process.processedChannels + 1,
+    });
   });
 
   await Promise.allSettled(promises);
@@ -97,6 +111,11 @@ export const restoreGuild = async (req, backupData, guildId) => {
     } catch (error) {
       console.error(error);
     }
+
+    ProcessController.setProcess(processId, {
+      ...process,
+      processedChannels: process.processedChannels + 1,
+    });
   });
 
   await Promise.allSettled(threadPromises);

@@ -17,6 +17,8 @@ export const startProcess = async (req, type, item) => {
     processType: type,
     processId,
     status: processStatus.Active,
+    totalChannels: "", // only for backing up/restore guild
+    processedChannels: 0, // only for backing up/restore guild
     tokenType,
     itemName,
     itemType,
@@ -31,7 +33,8 @@ export const startProcess = async (req, type, item) => {
     if (type === processType.BACKUP) {
       let remainingProps = {};
 
-      if (isGuild(itemType)) remainingProps = await backupGuild(item);
+      if (isGuild(itemType))
+        remainingProps = await backupGuild(item, processId);
 
       if (isDmOrGroup(itemType)) remainingProps = await backupDm(item);
 
@@ -46,7 +49,8 @@ export const startProcess = async (req, type, item) => {
     }
 
     if (type === processType.RESTORE) {
-      if (isGuild(itemType)) await restoreGuild(req, item, itemIdToRestoreInto);
+      if (isGuild(itemType))
+        await restoreGuild(req, item, itemIdToRestoreInto, processId);
 
       if (isDmOrGroup(itemType))
         await restoreDM(req, item, itemIdToRestoreInto);
