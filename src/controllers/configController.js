@@ -45,7 +45,7 @@ export const setConfig = async (req, res) => {
     console.error(err);
 
     // if err other than token invalid
-    throw new AppError("Something went wrong", 500);
+    throw new AppError("Something went wrong while logging in", 500);
   }
 
   const config = upsertConfigByTokenType.run({ token, tokenType });
